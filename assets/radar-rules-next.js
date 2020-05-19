@@ -164,19 +164,19 @@
         _name: 'Youtube',
         www: [
             {
-                title: '用户',
+                title: 'User',
                 docs: 'https://docs.rsshub.app/social-media.html#youtube',
                 source: '/user/:username',
                 target: '/youtube/user/:username',
             },
             {
-                title: '频道',
+                title: 'Channel',
                 docs: 'https://docs.rsshub.app/social-media.html#youtube',
                 source: '/channel/:id',
                 target: '/youtube/channel/:id',
             },
             {
-                title: '播放列表',
+                title: 'Playlist',
                 docs: 'https://docs.rsshub.app/social-media.html#youtube',
                 source: '/playlist',
                 target: (params, url) => `/youtube/playlist/${new URL(url).searchParams.get('list')}`,
