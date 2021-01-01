@@ -180,11 +180,34 @@ Under `RSSHub`'s directory, execute the following commands to pull the latest so
 $ git pull
 ```
 
-Then repeat the installation steps
+Then repeat the installation steps.
+
+### A tip for Nix users
+
+To install nodejs, yarn and jieba (to build documentation) you can use the following `nix-shell` configuration script.
+
+```nix
+let
+    pkgs = import <nixpkgs> {};
+    node = pkgs.nodejs-12_x;
+in pkgs.stdenv.mkDerivation {
+    name = "nodejs-yarn-jieba";
+    buildInputs = [node pkgs.yarn pkgs.pythonPackages.jieba];
+}
+```
 
 ## Deploy to Heroku
 
+### Instant deploy (without automatic update)
+
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https%3A%2F%2Fgithub.com%2FDIYgod%2FRSSHub)
+
+### Automatic deploy upon update
+
+1. [Fork RSSHub](https://github.com/login?return_to=%2FDIYgod%2FRSSHub) to your GitHub account.
+2. Deploy your fork to Heroku: `https://heroku.com/deploy?template=URL`, where `URL` is your fork address (_e.g._ `https://github.com/USERNAME/RSSHub`).
+3. Configure `automatic deploy` in Heroku app to follow the changes to your fork.
+4. Install [Pull](https://github.com/apps/pull) app to keep your fork synchronized with RSSHub.
 
 ## Deploy to Vercel(Zeit Now)
 
@@ -310,12 +333,17 @@ Partial routes have a strict anti-crawler policy, and can be configured to use p
 `PROXY_AUTH`: credentials to authenticate a user agent to proxy server, `Proxy-Authorization: Basic ${process.env.PROXY_AUTH}`
 
 `PROXY_URL_REGEX`: regex for url of enabling proxy, default to `.*`
+### CORS Request
+
+RSSHub by default reject CORS requests. This behavior can be modified via setting `ALLOW_ORIGIN: *` or `ALLOW_ORIGIN: www.example.com`.
 
 ### User Authentication Configurations
 
 Routes in `protected_route.js` will be protected using HTTP Basic Authentication.
 
-When adding feeds using RSS readers with HTTP Basic Authentication support, authentication information is required, eg：http://usernam3:passw0rd@localhost:1200/protected/rsshub/routes.
+When adding feeds using RSS readers with HTTP Basic Authentication support, authentication information is required, eg：http://usernam3:passw0rd@rsshub.app/protected/rsshub/routes.
+
+For readers that do not support HTTP Basic authentication, please refer to [Access Control Configuration](#access-control-configuration).
 
 `HTTP_BASIC_AUTH_NAME`: Http basic authentication username, default to `usernam3`, please change asap
 
@@ -323,11 +351,36 @@ When adding feeds using RSS readers with HTTP Basic Authentication support, auth
 
 ### Access Control Configuration
 
-Access control includes a whitelist and a blacklist, support IP and route, use `,` as the delimiter to separate multiple values. When both are defined, values in `BLACKLIST` will be disregarded.
+RSSHub supports access control via access key/code, whitelisting and blacklisting, enabling any will activate access control for all routes. `ALLOW_LOCALHOST: true` will grant access to all localhost IP addresses.
+
+#### White/blacklisting
+
+-   `WHITELIST`: the blacklist. When set, values in `BLACKLIST` are disregarded
 
 -   `BLACKLIST`: the blacklist
 
--   `WHITELIST`: the blacklist. When set, values in `BLACKLIST` are disregarded.
+White/blacklisting support IP and route as values. Use `,` as the delimiter to separate multiple values, eg: `WHITELIST=1.1.1.1,2.2.2.2,/qdaily/column/59`
+
+#### Access Key/Code
+
+-   `ACCESS_KEY`: the access key. When set, access via the key directly or the access code described above
+
+Access code is the md5 generated based on the access key + route, eg:
+
+| Access key  | Route             | Generating access code                   | Access code                      |
+| ----------- | ----------------- | ---------------------------------------- | -------------------------------- |
+| ILoveRSSHub | /qdaily/column/59 | md5('/qdaily/column/59' + 'ILoveRSSHub') | 0f820530128805ffc10351f22b5fd121 |
+
+-   Routes are accessible via `code`, eg: <https://rsshub.app/qdaily/column/59?code=0f820530128805ffc10351f22b5fd121>
+
+-   Or using `key` directly, eg: <https://rsshub.app/qdaily/column/59?key=ILoveRSSHub>
+
+See the relation between access key/code and white/blacklisting.
+
+|             | Whitelisted | Blacklisted | Correct access key/code | Wrong access key/code | No access key/code |
+| ----------- | ----------- | ----------- | ----------------------- | --------------------- | ------------------ |
+| Whitelisted | ✅          | ✅          | ✅                      | ✅                    | ✅                 |
+| Blacklisted | ✅          | ❌          | ✅                      | ❌                    | ❌                 |
 
 ### Other Application Configurations
 
@@ -341,7 +394,9 @@ Access control includes a whitelist and a blacklist, support IP and route, use `
 
 `REQUEST_RETRY`: retries allowed for failed requests, default to `2`
 
-`DEBUG_INFO`: display route information on homepage for debugging purpose, default to `true`
+`DEBUG_INFO`: display route information on homepage for debugging purpose, default to `false`
+
+`NODE_ENV`: display error message on pages for authentication failing, default to `production` (i.e. no display)
 
 `LOGGER_LEVEL`: specifies the maximum [level](https://github.com/winstonjs/winston#logging-levels) of messages to the console and log file, default to `info`
 
@@ -357,11 +412,30 @@ Access control includes a whitelist and a blacklist, support IP and route, use `
 
 ### Route-specific Configurations
 
+::: tip Notice
+
+Configs here is incomplete.
+
+See docs of specified route and `lib/config.js` for detail information.
+
+:::
+
 -   pixiv: [Registration](https://accounts.pixiv.net/signup)
 
     -   `PIXIV_USERNAME`: Pixiv username
 
     -   `PIXIV_PASSWORD`: Pixiv password
+    
+    -   `PIXIV_BYPASS_CDN`: bypass Cloudflare bot check by directly accessing Pixiv source server, defaults to disable, set `true` or `1` to enable
+
+    -   `PIXIV_BYPASS_HOSTNAME`: Pixiv source server hostname or IP address, hostname will be resolved to IPv4 address via `PIXIV_BYPASS_DOH`, defaults to `public-api.secure.pixiv.net`
+    
+    -   `PIXIV_BYPASS_DOH`: DNS over HTTPS endpoint, it must be compatible with Cloudflare or Google DoH JSON schema, defaults to `https://1.1.1.1/dns-query`
+    
+
+-   pixiv fanbox: Get paid content
+
+    -   `FANBOX_SESSION_ID`: equals to `FANBOXSESSID` in site cookies.
 
 -   disqus: [API Key application](https://disqus.com/api/applications/)
 
@@ -373,7 +447,7 @@ Access control includes a whitelist and a blacklist, support IP and route, use `
 
     -   `TWITTER_CONSUMER_SECRET`: Twitter Consumer Secret, support multiple keys, split them with `,`
 
-    -   `TWITTER_TOKEN_{id}`: Twitter token's corresponding id, replace `{id}` with the id, the value is a combination of `consumer_key consumer_secret access_token access_token_secret` by a comma `,`. Eg. `{consumer_key},{consumer_secret},{access_token},{access_token_secret}`.
+    -   `TWITTER_TOKEN_{handler}`: The token generated by the corresponding Twitter handler, replace `{handler}` with the Twitter handler, the value is a combination of `Twitter API key, Twitter API key secret, Access token, Access token secret` connected by a comma `,`. Eg. `TWITTER_TOKEN_RSSHub=bX1zry5nG4d1RbESQbnADpVIo,2YrD8qo9sXbB8VlYfVmo1Qtw0xsexnOliU5oZofq7aPIGou0Xx,123456789-hlkUHFYmeXrRcf6SEQciP8rP4lzmRgMgwdqIN9aK,pHcPnfa28rCIKhSICUCiaw9ppuSSl7T2f3dnGYpSM0bod`.
 
 -   youtube: [API Key application](https://console.developers.google.com/)
 
@@ -387,9 +461,18 @@ Access control includes a whitelist and a blacklist, support IP and route, use `
 
     -   `GITHUB_ACCESS_TOKEN`: GitHub Access Token
 
+-   Instagram：
+
+    -   `IG_USERNAME`: Your Instagram username
+    -   `IG_PASSWORD`: Your Instagram password
+
+    Warning: Two Factor Authentication is *not* supported.
+
 -   mail:
 
-    -   `EMAIL_CONFIG_{email}`: Mail setting, replace `{email}` with the email account, replace `@` in email account with `.`, eg. `EMAIL_CONFIG_xxx.gmail.com`. the value is in the format of `password=password&host=server&port=port`, eg. `password=123456&host=imap.gmail.com&port=993`
+    -   `EMAIL_CONFIG_{email}`: Mail setting, replace `{email}` with the email account, replace `@` in email account with `.`, eg. `EMAIL_CONFIG_xxx.gmail.com`. The value is in the format of `password=password&host=server&port=port`, eg:
+        -   Linux env: `EMAIL_CONFIG_xxx.qq.com="password=123456&host=imap.qq.com&port=993"`
+        -   docker env: `EMAIL_CONFIG_xxx.qq.com=password=123456&host=imap.qq.com&port=993`, please do not include quotations `'`,`"`
 
 -   nhentai torrent: [Registration](https://nhentai.net/register/)
 
@@ -400,6 +483,12 @@ Access control includes a whitelist and a blacklist, support IP and route, use `
 
     -   `DISCUZ_COOKIE_{cid}`: Cookie of a forum powered by discuz, cid can be anything from 00 to 99. When visiting route discuz, using cid to specify this cookie.
 
+-   Mastodon user timeline: apply api here `https://mastodon.example/settings/applications`, please check scope `read:search`
+
+    -   `MASTODON_API_HOST`: api instance domain
+    -   `MASTODON_API_ACCESS_TOKEN`: user access token
+    -   `MASTODON_API_ACCT_DOMAIN`: acct domain for particular instance
+
 -   Sci-hub for scientific journal routes:
 
-    -   `SCIHUB_HOST`: The Sci-hub mirror address that is accssible from your location, default to `https://sci-hub.tw`.
+    -   `SCIHUB_HOST`: The Sci-hub mirror address that is accssible from your location, default to `https://sci-hub.se`.
